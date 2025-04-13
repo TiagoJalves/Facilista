@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facilista - Receitas</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f4f4;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+    }
+
+    input, select {
+      margin-bottom: 10px;
+      padding: 8px;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      background-color: #3498db;
+      color: white;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    .receitas {
+      margin-top: 20px;
+    }
+
+    .receita {
+      background-color: #ecf0f1;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+    }
+
+    .ingredientes {
+      margin-top: 10px;
+    }
+
+    .mensagem-erro {
+      color: red;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    #listaCompras {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cadastro de Receita</h1>
+    <input type="text" id="nomeReceita" placeholder="Nome da Receita" />
+    <div id="ingredientes"></div>
+    <button onclick="adicionarIngrediente()">Adicionar Ingrediente</button>
+    <button onclick="salvarReceita()">Salvar Receita</button>
+    <div class="mensagem-erro" id="erro"></div>
+
+    <div class="receitas" id="receitasSalvas">
+      <h2>Receitas Salvas</h2>
+      <!-- Receitas inseridas dinamicamente aqui -->
+    </div>
+    <button onclick="gerarListaCompras()">Gerar Lista de Compras</button>
+    <button onclick="limparListaCompras()">Limpar Lista de Compras</button>
+    <div id="listaCompras"></div>
+  </div>
+
+  <!-- Script do JavaScript -->
+  <script>
+    // Função para carregar as receitas salvas na tela
+    async function carregarReceitas() {
+      const container = document.getElementById("receitasSalvas");
+      console.log(container);  // Verifique se o container foi encontrado
+
+      if (!container) {
+        console.error("Elemento com id 'receitasSalvas' não encontrado.");
+        return;
+      }
+
+      container.innerHTML = "<h2>Receitas Salvas</h2>";  // Limpa a lista de receitas
+
+      const response = await fetch("http://localhost:3000/api/receitas");
+      const receitas = await response.json();
+
+      receitas.forEach(receita => {
+        const div = document.createElement("div");
+        div.className = "receita";
+        div.innerHTML = `
+          <input type="checkbox" value="${receita.id}" data-ingredientes='${JSON.stringify(receita.ingredientes)}' />
+          ${receita.nome}
+          <button onclick="excluirReceita(${receita.id})">🗑️</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Função para excluir uma receita
+    async function excluirReceita(id) {
+      try {
+        const response = await fetch(`http://localhost:3000/api/receitas/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          throw new Error('Erro ao excluir receita');
+        }
+
+        // Atualiza a lista de receitas após a exclusão
+        carregarReceitas();
+      } catch (error) {
+        console.error("Erro ao excluir a receita:", error);
+      }
+    }
+
+    // Função para salvar uma nova receita
+    async function salvarReceita() {
+      const nome = document.getElementById("nomeReceita").value.trim();
+      const ingredientesInputs = document.querySelectorAll("#ingredientes > div, #ingredientes > input");
+
+      if (!nome) {
+        document.getElementById("erro").textContent = "Digite o nome da receita.";
+        return;
+      }
+
+      const ingredientes = [];
+      document.querySelectorAll("#ingredientes").forEach(div => {
+        const nomes = div.querySelectorAll(".ingrediente");
+        const quantidades = div.querySelectorAll(".quantidade");
+        const unidades = div.querySelectorAll(".unidade");
+
+        nomes.forEach((el, i) => {
+          if (el.value && quantidades[i].value && unidades[i].value) {
+            ingredientes.push({
+              nome: el.value,
+              quantidade: parseFloat(quantidades[i].value),
+              unidade: unidades[i].value
+            });
+          }
+        });
+      });
+
+      try {
+        const response = await fetch("http://localhost:3000/api/receitas", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            nome,
+            ingredientes
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Erro ao salvar receita');
+        }
+
+        // Limpa os campos de entrada e recarrega as receitas
+        document.getElementById("nomeReceita").value = "";
+        document.getElementById("ingredientes").innerHTML = ``;
+        carregarReceitas();
+      } catch (error) {
+        console.error('Erro ao salvar a receita:', error);
+        document.getElementById("erro").textContent = "Erro ao salvar a receita. Tente novamente.";
+      }
+    }
+
+    // Função para adicionar ingredientes dinamicamente
+    function adicionarIngrediente() {
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <input type="text" class="ingrediente" placeholder="Ingrediente" />
+        <input type="number" class="quantidade" placeholder="Quantidade" />
+        <select class="unidade">
+          <option>Unidade</option>
+          <option>Pacote</option>
+          <option>Caixas</option>
+          <option>Litros</option>
+        </select>
+      `;
+      document.getElementById("ingredientes").appendChild(div);
+    }
+
+    // Função para gerar lista de compras
+    function gerarListaCompras() {
+      const checkboxes = document.querySelectorAll(".receita input[type=checkbox]:checked");
+      if (checkboxes.length === 0) {
+        alert("Selecione pelo menos uma receita.");
+        return;
+      }
+
+      const lista = {};
+      checkboxes.forEach(cb => {
+        const ingredientes = JSON.parse(cb.dataset.ingredientes);
+        ingredientes.forEach(item => {
+          const chave = `${item.nome} (${item.unidade})`;
+          if (lista[chave]) {
+            lista[chave] += item.quantidade;
+          } else {
+            lista[chave] = item.quantidade;
+          }
+        });
+      });
+
+      const divLista = document.getElementById("listaCompras");
+      divLista.innerHTML = "<h2>Lista de Compras</h2><ul>" + 
+        Object.entries(lista).map(([nome, qtd]) => `<li>${nome}: ${qtd}</li>`).join('') +
+        "</ul>";
+    }
+
+    // Função para limpar a lista de compras
+    function limparListaCompras() {
+      const divLista = document.getElementById("listaCompras");
+      const listaHTML = divLista.innerHTML;
+
+      if (listaHTML === "<h2>Lista de Compras</h2>") {
+        alert("A lista de compras já está vazia.");
+      } else {
+        divLista.innerHTML = "<h2>Lista de Compras</h2>";
+      }
+    }
+
+    // Carrega as receitas na tela ao iniciar a página
+    document.addEventListener('DOMContentLoaded', () => {
+      carregarReceitas();
+    });
+  </script>
+</body>
+</html>
