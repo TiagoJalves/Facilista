@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-const path = require('path');
 const app = express();
 const port = process.env.PORT || 10000;  // A porta será definida pelo ambiente do Render ou a local
 
@@ -64,9 +63,9 @@ app.delete('/api/receitas/:id', async (req, res) => {
   }
 });
 
-// Rota para servir o HTML do frontend
+// Rota padrão para o servidor
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'receitas.html')); // Servir o arquivo HTML
+  res.send('API Facilista - Receitas');
 });
 
 // Iniciando o servidor
