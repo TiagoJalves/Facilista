@@ -1,3 +1,4 @@
+<!-- Salve este conteúdo como receitas.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -85,28 +86,22 @@
 
     <div class="receitas" id="receitasSalvas">
       <h2>Receitas Salvas</h2>
-      <!-- Receitas inseridas dinamicamente aqui -->
     </div>
     <button onclick="gerarListaCompras()">Gerar Lista de Compras</button>
     <button onclick="limparListaCompras()">Limpar Lista de Compras</button>
     <div id="listaCompras"></div>
   </div>
 
-  <!-- Script do JavaScript -->
   <script>
-    // Função para carregar as receitas salvas na tela
+    const API_URL = "https://facilista-1.onrender.com/api/receitas";
+
     async function carregarReceitas() {
       const container = document.getElementById("receitasSalvas");
-      console.log(container);  // Verifique se o container foi encontrado
+      if (!container) return;
 
-      if (!container) {
-        console.error("Elemento com id 'receitasSalvas' não encontrado.");
-        return;
-      }
+      container.innerHTML = "<h2>Receitas Salvas</h2>";
 
-      container.innerHTML = "<h2>Receitas Salvas</h2>";  // Limpa a lista de receitas
-
-      const response = await fetch("http://localhost:3000/api/receitas");
+      const response = await fetch(API_URL);
       const receitas = await response.json();
 
       receitas.forEach(receita => {
@@ -121,28 +116,19 @@
       });
     }
 
-    // Função para excluir uma receita
     async function excluirReceita(id) {
       try {
-        const response = await fetch(`http://localhost:3000/api/receitas/${id}`, {
-          method: 'DELETE',
-        });
-
-        if (!response.ok) {
-          throw new Error('Erro ao excluir receita');
-        }
-
-        // Atualiza a lista de receitas após a exclusão
+        const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Erro ao excluir receita');
         carregarReceitas();
       } catch (error) {
         console.error("Erro ao excluir a receita:", error);
       }
     }
 
-    // Função para salvar uma nova receita
     async function salvarReceita() {
       const nome = document.getElementById("nomeReceita").value.trim();
-      const ingredientesInputs = document.querySelectorAll("#ingredientes > div, #ingredientes > input");
+      const ingredientesInputs = document.querySelectorAll("#ingredientes input");
 
       if (!nome) {
         document.getElementById("erro").textContent = "Digite o nome da receita.";
@@ -150,41 +136,27 @@
       }
 
       const ingredientes = [];
-      document.querySelectorAll("#ingredientes").forEach(div => {
-        const nomes = div.querySelectorAll(".ingrediente");
-        const quantidades = div.querySelectorAll(".quantidade");
-        const unidades = div.querySelectorAll(".unidade");
+      document.querySelectorAll("#ingredientes > div").forEach(div => {
+        const nome = div.querySelector(".ingrediente")?.value;
+        const quantidade = parseFloat(div.querySelector(".quantidade")?.value);
+        const unidade = div.querySelector(".unidade")?.value;
 
-        nomes.forEach((el, i) => {
-          if (el.value && quantidades[i].value && unidades[i].value) {
-            ingredientes.push({
-              nome: el.value,
-              quantidade: parseFloat(quantidades[i].value),
-              unidade: unidades[i].value
-            });
-          }
-        });
+        if (nome && quantidade && unidade) {
+          ingredientes.push({ nome, quantidade, unidade });
+        }
       });
 
       try {
-        const response = await fetch("http://localhost:3000/api/receitas", {
+        const response = await fetch(API_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            nome,
-            ingredientes
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, ingredientes })
         });
 
-        if (!response.ok) {
-          throw new Error('Erro ao salvar receita');
-        }
+        if (!response.ok) throw new Error('Erro ao salvar receita');
 
-        // Limpa os campos de entrada e recarrega as receitas
         document.getElementById("nomeReceita").value = "";
-        document.getElementById("ingredientes").innerHTML = ``;
+        document.getElementById("ingredientes").innerHTML = "";
         carregarReceitas();
       } catch (error) {
         console.error('Erro ao salvar a receita:', error);
@@ -192,7 +164,6 @@
       }
     }
 
-    // Função para adicionar ingredientes dinamicamente
     function adicionarIngrediente() {
       const div = document.createElement('div');
       div.innerHTML = `
@@ -208,7 +179,6 @@
       document.getElementById("ingredientes").appendChild(div);
     }
 
-    // Função para gerar lista de compras
     function gerarListaCompras() {
       const checkboxes = document.querySelectorAll(".receita input[type=checkbox]:checked");
       if (checkboxes.length === 0) {
@@ -221,11 +191,7 @@
         const ingredientes = JSON.parse(cb.dataset.ingredientes);
         ingredientes.forEach(item => {
           const chave = `${item.nome} (${item.unidade})`;
-          if (lista[chave]) {
-            lista[chave] += item.quantidade;
-          } else {
-            lista[chave] = item.quantidade;
-          }
+          lista[chave] = (lista[chave] || 0) + item.quantidade;
         });
       });
 
@@ -235,22 +201,16 @@
         "</ul>";
     }
 
-    // Função para limpar a lista de compras
     function limparListaCompras() {
       const divLista = document.getElementById("listaCompras");
-      const listaHTML = divLista.innerHTML;
-
-      if (listaHTML === "<h2>Lista de Compras</h2>") {
+      if (divLista.innerHTML === "<h2>Lista de Compras</h2>") {
         alert("A lista de compras já está vazia.");
       } else {
         divLista.innerHTML = "<h2>Lista de Compras</h2>";
       }
     }
 
-    // Carrega as receitas na tela ao iniciar a página
-    document.addEventListener('DOMContentLoaded', () => {
-      carregarReceitas();
-    });
+    document.addEventListener('DOMContentLoaded', carregarReceitas);
   </script>
 </body>
 </html>
