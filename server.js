@@ -10,11 +10,10 @@ app.use(cors()); // Para permitir requisições de diferentes origens (se você 
 
 // Configuração do PostgreSQL
 const client = new Client({
-  user: 'postgres', // Substitua com seu nome de usuário
-  host: 'localhost',   // Endereço do banco de dados
-  database: 'receitas', // Nome do banco de dados
-  password: 'Ti120590!',   // Substitua com sua senha
-  port: 5432,            // Porta do PostgreSQL (default 5432)
+  connectionString: process.env.postgresql://facilista_user:j7K3tgncSdWXsW1byyzw702NQ0FqSwuB@dpg-cvtjsp3e5dus73aaa97g-a/facilista, // Usando a variável de ambiente DATABASE_URL do Render
+  ssl: {
+    rejectUnauthorized: false // Necessário para conexões seguras no Render
+  }
 });
 
 // Conectando ao banco de dados
@@ -117,7 +116,7 @@ app.delete('/api/receitas/:id', (req, res) => {
 });
 
 // Iniciando o servidor
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
 });
