@@ -1,101 +1,74 @@
 const express = require('express');
-const { Client } = require('pg');
-const cors = require('cors'); // Para permitir requisições de diferentes origens (necessário para o frontend)
-
-// Criando uma instância do Express
+const cors = require('cors');
+const { Pool } = require('pg');
 const app = express();
-app.use(express.json()); // Para analisar requisições com JSON
-app.use(cors()); // Para permitir requisições de diferentes origens
+const port = process.env.PORT || 10000;  // A porta será definida pelo ambiente do Render ou a local
 
-// Conectar-se ao banco de dados PostgreSQL usando a variável de ambiente DATABASE_URL
-const client = new Client({
-  connectionString: process.env.DATABASE_URL,
+// Middleware para permitir CORS e parsear JSON no corpo das requisições
+app.use(cors());
+app.use(express.json());
+
+// Conexão com o banco de dados PostgreSQL (substitua com suas credenciais do Render)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL, // Certifique-se de definir essa variável no painel do Render
   ssl: {
-    rejectUnauthorized: false, // Necessário para algumas conexões seguras (ex: Render)
-  },
+    rejectUnauthorized: false
+  }
 });
 
-// Tentar conectar ao banco de dados
-client.connect()
-  .then(() => console.log('Conectado ao banco de dados PostgreSQL'))
-  .catch((err) => {
-    console.error('Erro ao conectar ao banco de dados', err);
-    process.exit(1); // Sai do processo em caso de erro de conexão
-  });
-
-// Rota para criar uma nova receita (POST)
-app.post('/api/receitas', (req, res) => {
-  const { nome, descricao, ingredientes } = req.body;
-  const query = 'INSERT INTO receitas (nome, descricao, ingredientes) VALUES ($1, $2, $3) RETURNING *';
-  const values = [nome, descricao, JSON.stringify(ingredientes)];
-
-  client.query(query, values)
-    .then((result) => {
-      res.status(201).json({
-        message: 'Receita salva com sucesso!',
-        receita: result.rows[0],
-      });
-    })
-    .catch((err) => {
-      console.error('Erro ao salvar a receita', err);
-      res.status(500).json({ message: 'Erro ao salvar a receita. Tente novamente.' });
-    });
+// Endpoint para listar as receitas
+app.get('/api/receitas', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM receitas');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erro ao obter receitas:', error);
+    res.status(500).send('Erro ao obter receitas');
+  }
 });
 
-// Rota para listar todas as receitas (GET)
-app.get('/api/receitas', (req, res) => {
-  const query = 'SELECT * FROM receitas';
+// Endpoint para salvar uma nova receita
+app.post('/api/receitas', async (req, res) => {
+  const { nome, ingredientes } = req.body;
 
-  client.query(query)
-    .then((result) => {
-      res.status(200).json(result.rows);
-    })
-    .catch((err) => {
-      console.error('Erro ao buscar receitas', err);
-      res.status(500).json({ message: 'Erro ao buscar receitas. Tente novamente.' });
-    });
+  if (!nome || !ingredientes || ingredientes.length === 0) {
+    return res.status(400).send('Nome e ingredientes são obrigatórios');
+  }
+
+  try {
+    const result = await pool.query(
+      'INSERT INTO receitas(nome, ingredientes) VALUES($1, $2) RETURNING id',
+      [nome, JSON.stringify(ingredientes)]
+    );
+    res.status(201).json({ id: result.rows[0].id });
+  } catch (error) {
+    console.error('Erro ao salvar receita:', error);
+    res.status(500).send('Erro ao salvar receita');
+  }
 });
 
-// Rota para buscar uma receita por ID (GET)
-app.get('/api/receitas/:id', (req, res) => {
+// Endpoint para excluir uma receita
+app.delete('/api/receitas/:id', async (req, res) => {
   const { id } = req.params;
-  const query = 'SELECT * FROM receitas WHERE id = $1';
-  const values = [id];
 
-  client.query(query, values)
-    .then((result) => {
-      if (result.rows.length === 0) {
-        return res.status(404).json({ message: 'Receita não encontrada.' });
-      }
-      res.status(200).json(result.rows[0]);
-    })
-    .catch((err) => {
-      console.error('Erro ao buscar receita', err);
-      res.status(500).json({ message: 'Erro ao buscar receita. Tente novamente.' });
-    });
+  try {
+    const result = await pool.query('DELETE FROM receitas WHERE id = $1 RETURNING id', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).send('Receita não encontrada');
+    }
+    res.status(200).send('Receita excluída com sucesso');
+  } catch (error) {
+    console.error('Erro ao excluir receita:', error);
+    res.status(500).send('Erro ao excluir receita');
+  }
 });
 
-// Rota para excluir uma receita (DELETE)
-app.delete('/api/receitas/:id', (req, res) => {
-  const { id } = req.params;
-  const query = 'DELETE FROM receitas WHERE id = $1 RETURNING *';
-  const values = [id];
-
-  client.query(query, values)
-    .then((result) => {
-      if (result.rows.length === 0) {
-        return res.status(404).json({ message: 'Receita não encontrada.' });
-      }
-      res.status(200).json({ message: 'Receita excluída com sucesso!' });
-    })
-    .catch((err) => {
-      console.error('Erro ao excluir receita', err);
-      res.status(500).json({ message: 'Erro ao excluir receita. Tente novamente.' });
-    });
+// Rota padrão para o servidor
+app.get('/', (req, res) => {
+  res.send('API Facilista - Receitas');
 });
 
 // Iniciando o servidor
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
+app.listen(port, () => {
+  console.log(`Servidor rodando em http://localhost:${port}`);
 });
