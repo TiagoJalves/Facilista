@@ -1,9 +1,8 @@
-<!-- Salve como receitas.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Facilista - Receitas</title>
   <style>
     body {
@@ -11,10 +10,12 @@
       background-color: #f4f4f4;
       padding: 20px;
     }
+
     h1 {
       text-align: center;
       color: #2c3e50;
     }
+
     .container {
       max-width: 800px;
       margin: 0 auto;
@@ -23,6 +24,7 @@
       border-radius: 10px;
       box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
     }
+
     input, select {
       margin-bottom: 10px;
       padding: 8px;
@@ -30,6 +32,7 @@
       border: 1px solid #ccc;
       border-radius: 6px;
     }
+
     button {
       padding: 10px 20px;
       border: none;
@@ -40,23 +43,32 @@
       cursor: pointer;
       margin-top: 10px;
     }
+
     button:hover {
       background-color: #2980b9;
     }
+
     .receitas {
       margin-top: 20px;
     }
+
     .receita {
       background-color: #ecf0f1;
       padding: 10px;
       margin-bottom: 10px;
       border-radius: 6px;
     }
+
+    .ingredientes {
+      margin-top: 10px;
+    }
+
     .mensagem-erro {
       color: red;
       font-weight: bold;
       margin-top: 10px;
     }
+
     #listaCompras {
       margin-top: 20px;
     }
@@ -74,24 +86,25 @@
     <div class="receitas" id="receitasSalvas">
       <h2>Receitas Salvas</h2>
     </div>
-
     <button onclick="gerarListaCompras()">Gerar Lista de Compras</button>
     <button onclick="limparListaCompras()">Limpar Lista de Compras</button>
-    <div id="listaCompras"><h2>Lista de Compras</h2></div>
+    <div id="listaCompras"></div>
   </div>
 
   <script>
-    const API_URL = "https://facilista-1.onrender.com/api/receitas";
+    // URL da API
+    const API_URL = "https://facilista-t3ea.onrender.com/api/receitas";
 
+    // Carregar as receitas salvas ao carregar a página
     async function carregarReceitas() {
       const container = document.getElementById("receitasSalvas");
       if (!container) return;
 
-      container.innerHTML = "<h2>Receitas Salvas</h2>";
+      container.innerHTML = "<h2>Receitas Salvas</h2>"; // Limpa o container antes de carregar as receitas
 
       try {
-        const response = await fetch(API_URL);
-        const receitas = await response.json();
+        const response = await fetch(API_URL); // Chama a API para pegar as receitas
+        const receitas = await response.json(); // Converte a resposta para JSON
 
         receitas.forEach(receita => {
           const div = document.createElement("div");
@@ -103,12 +116,13 @@
           `;
           container.appendChild(div);
         });
-      } catch (err) {
-        console.error("Erro ao carregar receitas:", err);
-        container.innerHTML += "<p class='mensagem-erro'>Erro ao carregar receitas. Tente novamente mais tarde.</p>";
+      } catch (error) {
+        console.error('Erro ao carregar as receitas:', error);
+        document.getElementById("erro").textContent = "Erro ao carregar as receitas.";
       }
     }
 
+    // Excluir uma receita
     async function excluirReceita(id) {
       try {
         const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
@@ -116,35 +130,29 @@
         carregarReceitas();
       } catch (error) {
         console.error("Erro ao excluir a receita:", error);
-        alert("Erro ao excluir a receita.");
       }
     }
 
+    // Salvar uma nova receita
     async function salvarReceita() {
       const nome = document.getElementById("nomeReceita").value.trim();
-      const erro = document.getElementById("erro");
-      erro.textContent = "";
+      const ingredientesInputs = document.querySelectorAll("#ingredientes input");
 
       if (!nome) {
-        erro.textContent = "Digite o nome da receita.";
+        document.getElementById("erro").textContent = "Digite o nome da receita.";
         return;
       }
 
       const ingredientes = [];
       document.querySelectorAll("#ingredientes > div").forEach(div => {
-        const nome = div.querySelector(".ingrediente")?.value.trim();
+        const nome = div.querySelector(".ingrediente")?.value;
         const quantidade = parseFloat(div.querySelector(".quantidade")?.value);
         const unidade = div.querySelector(".unidade")?.value;
 
-        if (nome && quantidade > 0 && unidade && unidade !== "Unidade") {
+        if (nome && quantidade && unidade) {
           ingredientes.push({ nome, quantidade, unidade });
         }
       });
-
-      if (ingredientes.length === 0) {
-        erro.textContent = "Adicione pelo menos um ingrediente válido.";
-        return;
-      }
 
       try {
         const response = await fetch(API_URL, {
@@ -155,32 +163,33 @@
 
         if (!response.ok) throw new Error('Erro ao salvar receita');
 
+        // Limpar os campos após salvar
         document.getElementById("nomeReceita").value = "";
         document.getElementById("ingredientes").innerHTML = "";
         carregarReceitas();
       } catch (error) {
         console.error('Erro ao salvar a receita:', error);
-        erro.textContent = "Erro ao salvar a receita. Tente novamente.";
+        document.getElementById("erro").textContent = "Erro ao salvar a receita. Tente novamente.";
       }
     }
 
+    // Adicionar um novo ingrediente ao formulário
     function adicionarIngrediente() {
       const div = document.createElement('div');
       div.innerHTML = `
         <input type="text" class="ingrediente" placeholder="Ingrediente" />
-        <input type="number" class="quantidade" placeholder="Quantidade" min="0.01" step="0.01" />
+        <input type="number" class="quantidade" placeholder="Quantidade" />
         <select class="unidade">
-          <option selected disabled>Unidade</option>
+          <option>Unidade</option>
           <option>Pacote</option>
           <option>Caixas</option>
           <option>Litros</option>
-          <option>Gramas</option>
-          <option>Kg</option>
         </select>
       `;
       document.getElementById("ingredientes").appendChild(div);
     }
 
+    // Gerar lista de compras com base nas receitas selecionadas
     function gerarListaCompras() {
       const checkboxes = document.querySelectorAll(".receita input[type=checkbox]:checked");
       if (checkboxes.length === 0) {
@@ -203,6 +212,7 @@
         "</ul>";
     }
 
+    // Limpar a lista de compras
     function limparListaCompras() {
       const divLista = document.getElementById("listaCompras");
       if (divLista.innerHTML === "<h2>Lista de Compras</h2>") {
@@ -212,6 +222,7 @@
       }
     }
 
+    // Carregar as receitas ao iniciar a página
     document.addEventListener('DOMContentLoaded', carregarReceitas);
   </script>
 </body>
